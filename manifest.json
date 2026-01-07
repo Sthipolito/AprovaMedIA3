@@ -1,0 +1,20 @@
+{
+  "short_name": "AprovaMed",
+  "name": "AprovaMed IA - Medicina",
+  "icons": [
+    {
+      "src": "https://pub-872633efa2d545638be12ea86363c2ca.r2.dev/WhatsApp%20Image%202025-11-09%20at%2013.47.15%20(1).png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://pub-872633efa2d545638be12ea86363c2ca.r2.dev/WhatsApp%20Image%202025-11-09%20at%2013.47.15%20(1).png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0D9488",
+  "background_color": "#ffffff"
+}

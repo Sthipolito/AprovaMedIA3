@@ -1,0 +1,5 @@
+{
+  "name": "AprovaMed IA V2",
+  "description": "An AI-powered study assistant for medical students. Upload study materials in PDF format, ask questions, and extract interactive questions to build a question bank.",
+  "requestFramePermissions": []
+}
