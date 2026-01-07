@@ -60,23 +60,25 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ studentName, currentVie
 
     return (
         <aside className={`${sidebarWidth} bg-gray-900 text-white flex flex-col flex-shrink-0 h-full border-r border-gray-800 transition-all duration-300 ease-in-out`}>
-            {/* Header: Logo & Toggle - Aumentado */}
-            <div className={`py-4 px-3 flex items-center border-b border-gray-800 h-24 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+            {/* Header: Logo & Toggle - Maximizado TOTAL */}
+            <div className={`flex items-center border-b border-gray-800 h-48 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                  {!isCollapsed && (
-                    <div className="flex-1 flex justify-center items-center h-full mr-2">
+                    <div className="flex-1 h-full w-full flex items-center justify-center overflow-hidden">
                         <img 
                             src={logoUrl} 
                             alt="AprovaMed" 
-                            className="h-full w-auto max-w-[160px] object-contain" 
+                            className="w-full h-full object-contain" 
                         />
                     </div>
                  )}
+                 
+                 {/* Collapse Toggle - Absolute positioning to float over logo if needed, or stick to corner */}
                  <button 
                     onClick={() => setIsCollapsed(!isCollapsed)} 
-                    className="text-gray-500 hover:text-white transition-colors"
+                    className={`text-gray-500 hover:text-white transition-colors absolute right-2 top-2 z-10`}
                     title={isCollapsed ? "Expandir" : "Recolher"}
                  >
-                    {isCollapsed ? <PanelLeftOpen className="w-5 h-5"/> : <PanelLeftClose className="w-5 h-5"/>}
+                    {isCollapsed ? <PanelLeftOpen className="w-6 h-6 relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/> : <PanelLeftClose className="w-5 h-5"/>}
                  </button>
             </div>
 

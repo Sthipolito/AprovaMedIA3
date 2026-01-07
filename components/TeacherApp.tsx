@@ -126,14 +126,16 @@ const TeacherApp: React.FC = () => {
             
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Header Mobile (Apenas visível em telas pequenas) */}
-                <header className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 z-10 flex-shrink-0">
+                <header className="md:hidden flex items-center justify-between px-2 bg-white border-b border-gray-200 z-10 flex-shrink-0 h-28">
                     <button 
                         onClick={() => setIsMobileMenuOpen(true)}
-                        className="p-2 -ml-2 rounded-md text-gray-600 hover:bg-gray-100"
+                        className="p-2 rounded-md text-gray-600 hover:bg-gray-100"
                     >
                         <MenuIcon className="w-6 h-6" />
                     </button>
-                    <img src={logoUrl} alt="AprovaMed" className="h-10 w-auto" />
+                    <div className="h-full flex-grow flex items-center justify-center p-1">
+                        <img src={logoUrl} alt="AprovaMed" className="h-full w-auto object-contain" />
+                    </div>
                     <div className="w-8"></div> {/* Spacer para balancear */}
                 </header>
 

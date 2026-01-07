@@ -73,31 +73,31 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, onLogout
             )}
 
             <aside className={sidebarClasses}>
-                {/* Header - Aumentado para acomodar logo grande */}
-                <div className={`py-4 px-3 flex items-center border-b border-gray-800 h-24 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                {/* Header - Maximizado TOTAL para logo gigante */}
+                <div className={`flex items-center border-b border-gray-800 h-48 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                      {!isCollapsed && (
-                        <div className="flex-1 flex justify-center items-center h-full mr-2">
+                        <div className="flex-1 h-full w-full flex items-center justify-center overflow-hidden">
                             <img 
                                 src={logoUrl} 
                                 alt="AprovaMed" 
-                                className="h-full w-auto max-w-[160px] object-contain transition-opacity duration-300" 
+                                className="w-full h-full object-contain" 
                             />
                         </div>
                      )}
                      
                      {/* Mobile Close Button */}
-                     <button onClick={onClose} className="md:hidden p-1 text-gray-400 hover:text-white">
+                     <button onClick={onClose} className="md:hidden p-1 text-gray-400 hover:text-white absolute top-2 right-2 bg-gray-900/50 rounded-full z-10">
                         <XIcon className="w-6 h-6" />
                      </button>
 
                      {/* Desktop Collapse Toggle */}
                      <button 
                         onClick={() => setIsCollapsed(!isCollapsed)} 
-                        className="hidden md:block text-gray-500 hover:text-white transition-colors"
+                        className={`hidden md:block text-gray-500 hover:text-white transition-colors absolute right-2 top-2 z-10`}
                         title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
-                     >
-                        {isCollapsed ? <PanelLeftOpen className="w-5 h-5"/> : <PanelLeftClose className="w-5 h-5"/>}
-                     </button>
+                    >
+                        {isCollapsed ? <PanelLeftOpen className="w-6 h-6 relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/> : <PanelLeftClose className="w-5 h-5"/>}
+                    </button>
                 </div>
 
                 {/* Navigation */}
