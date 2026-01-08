@@ -128,13 +128,11 @@ export const QuestionSetDetailModal: React.FC<QuestionSetDetailModalProps> = ({
         }
         
         // Lógica Inteligente de Delta:
-        // 1. Verifica quais questões selecionadas NÃO TEM explicação.
         const questionsMissingExplanation = selectedQuestions.filter(q => !q.explanation || q.explanation.trim().length < 5);
         
         let questionsToProcess: QuizQuestion[] = [];
         
         if (questionsMissingExplanation.length > 0) {
-            // Se houver questões faltando, prioriza elas (delta update)
             if (window.confirm(`Detectamos que ${questionsMissingExplanation.length} questões selecionadas ainda não possuem explicação. Deseja gerar APENAS para elas (mais rápido)?\n\nClique em Cancelar para forçar a geração de TODAS as ${selectedQuestions.length} selecionadas.`)) {
                 questionsToProcess = questionsMissingExplanation;
                 setGenerationProgress(`Gerando para ${questionsMissingExplanation.length} questões novas...`);
@@ -143,7 +141,6 @@ export const QuestionSetDetailModal: React.FC<QuestionSetDetailModalProps> = ({
                 setGenerationProgress(`Regenerando todas as ${selectedQuestions.length} questões...`);
             }
         } else {
-            // Se todas já têm, pergunta se quer regenerar
             if (!window.confirm("Todas as questões selecionadas já possuem explicação. Deseja gerar novamente?")) return;
             questionsToProcess = selectedQuestions;
             setGenerationProgress(`Regenerando todas as ${selectedQuestions.length} questões...`);
@@ -152,21 +149,7 @@ export const QuestionSetDetailModal: React.FC<QuestionSetDetailModalProps> = ({
         setIsGeneratingExplanations(true);
         
         try {
-            // Criamos um mapa temporário dos índices originais para saber onde atualizar
-            const originalIndicesMap = new Map<QuizQuestion, number>();
-            questions.forEach((q, idx) => {
-                if (questionsToProcess.includes(q)) {
-                    // Nota: a comparação por referência funciona aqui porque questionsToProcess é derivado de selectedQuestions que vem de questions
-                    // Se não funcionar por ref, usaríamos um ID único se tivéssemos, ou compararíamos o texto da pergunta
-                    originalIndicesMap.set(q, idx);
-                } else {
-                    // Fallback comparison by text content if reference fails (e.g. strict mode re-renders)
-                    const foundInProcess = questionsToProcess.find(qp => qp.question === q.question);
-                    if (foundInProcess) originalIndicesMap.set(foundInProcess, idx);
-                }
-            });
-
-            // Chama o serviço (que agora suporta batching automático)
+            // Chama o serviço (que agora suporta batching automático e prompt melhorado)
             const processedResults = await geminiService.generateExplanationsForQuestions(questionsToProcess);
             
             // Merge dos resultados
@@ -174,25 +157,22 @@ export const QuestionSetDetailModal: React.FC<QuestionSetDetailModalProps> = ({
             let updatedCount = 0;
 
             processedResults.forEach((processedQ) => {
-                // Tenta encontrar o índice original
-                // Precisamos achar a questão correspondente na lista original pelo texto
+                // Tenta encontrar o índice original pelo texto da questão
                 const originalIndex = newQuestionsList.findIndex(oq => oq.question === processedQ.question);
                 
                 if (originalIndex !== -1) {
-                    if (newQuestionsList[originalIndex].explanation !== processedQ.explanation) {
-                        newQuestionsList[originalIndex] = {
-                            ...newQuestionsList[originalIndex],
-                            explanation: processedQ.explanation
-                        };
-                        updatedCount++;
-                    }
+                    newQuestionsList[originalIndex] = {
+                        ...newQuestionsList[originalIndex],
+                        explanation: processedQ.explanation
+                    };
+                    updatedCount++;
                 }
             });
 
             if (updatedCount > 0) {
                 setQuestions(newQuestionsList);
-                setHasChanges(true);
-                alert(`Concluído! ${updatedCount} explicações foram geradas/atualizadas com sucesso. Não esqueça de salvar.`);
+                setHasChanges(true); // FORÇA O APARECIMENTO DO BOTÃO SALVAR
+                console.log("Comentários gerados com sucesso. Flag hasChanges definida para true.");
             } else {
                 alert("O processo foi concluído, mas nenhuma alteração foi detectada.");
             }
@@ -421,7 +401,8 @@ export const QuestionSetDetailModal: React.FC<QuestionSetDetailModalProps> = ({
                                      )}
                                      {q.explanation && (
                                         <div className="mt-3 pl-8 text-xs text-gray-600 italic border-l-4 border-purple-200 pl-3 bg-purple-50 p-2 rounded-r-md">
-                                            <strong className="text-purple-700 block mb-1">Comentário do Professor (IA):</strong> {q.explanation}
+                                            <strong className="text-purple-700 block mb-1">Comentário do Professor (IA):</strong> 
+                                            <div className="whitespace-pre-wrap">{q.explanation}</div>
                                         </div>
                                      )}
                                 </div>

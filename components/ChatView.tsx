@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Header from './Header';
-import { ChatMessage, QuizQuestion } from '../types';
-import { answerQuestion, extractQuestionsFromPdf } from '../services/geminiService';
+import { QuizQuestion } from '../types';
+import { extractQuestionsFromPdf } from '../services/geminiService';
 import { saveQuestionSet, appendQuestionsToSet } from '../services/questionBankService';
 import * as testService from '../services/testService';
-import { SendIcon, UserIcon, BotIcon, FileTextIcon, MessageSquareIcon } from './IconComponents';
+import { FileTextIcon, LayersIcon, SparklesIcon, LayoutGridIcon } from './IconComponents';
 import PdfViewer from './PdfViewer';
 import QuestionBankView from './QuestionBankView';
 import FlashcardModal from './FlashcardModal';
@@ -20,62 +21,33 @@ interface ChatViewProps {
     onStartNewSession: () => void;
 }
 
-const LoadingIndicator: React.FC = () => (
-    <div className="flex items-center space-x-2">
-        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-    </div>
-);
-
 const ADMIN_TEST_USER_ID = "00000000-0000-0000-0000-000000000000"; 
 
 const ChatView: React.FC<ChatViewProps> = ({ pdfFile, pdfText, fileName, onStartNewSession }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'system', content: `Olá! Analisei "${fileName}". Pergunte-me qualquer coisa ou use as ferramentas de IA.` }
-    ]);
-    const [userInput, setUserInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    // Removed Chat States (messages, userInput, loading, suggestedQuestions)
+    
+    // Default to 'questions' since chat is gone
+    const [activeTab, setActiveTab] = useState<'questions' | 'answers' | 'summary' | 'flashcards'>('questions');
+    
     const [questionBank, setQuestionBank] = useState<QuizQuestion[] | null>(null);
     const [isExtracting, setIsExtracting] = useState(false);
-    const [activeTab, setActiveTab] = useState<'chat' | 'questions' | 'answers' | 'summary' | 'flashcards'>('chat');
+    
     const [showFlashcards, setShowFlashcards] = useState(false);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [selectedQuestionIndices, setSelectedQuestionIndices] = useState<Set<number>>(new Set());
     
-    // Mobile View State: 'chat' (default) or 'pdf'
-    const [mobileViewMode, setMobileViewMode] = useState<'chat' | 'pdf'>('chat');
+    // Mobile View State: 'tools' (default) or 'pdf'
+    const [mobileViewMode, setMobileViewMode] = useState<'tools' | 'pdf'>('tools');
     
-    const chatContainerRef = useRef<HTMLDivElement>(null);
-
     const selectedQuestions = useMemo(() => {
         if (!questionBank) return [];
         return Array.from(selectedQuestionIndices).map(index => questionBank[index]);
     }, [questionBank, selectedQuestionIndices]);
-
-    useEffect(() => {
-        if (activeTab === 'chat' && mobileViewMode === 'chat') {
-            chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight);
-        }
-    }, [messages, activeTab, mobileViewMode]);
     
     useEffect(() => {
         setSelectedQuestionIndices(new Set());
     }, [questionBank]);
 
-    const handleSendMessage = async () => {
-        if (!userInput.trim() || isLoading) return;
-
-        const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userInput }];
-        setMessages(newMessages);
-        setUserInput('');
-        setIsLoading(true);
-
-        const response = await answerQuestion(pdfText, userInput);
-
-        setMessages([...newMessages, { role: 'model', content: response }]);
-        setIsLoading(false);
-    };
     
     const handleExtractQuestions = async () => {
         setIsExtracting(true);
@@ -158,10 +130,10 @@ const ChatView: React.FC<ChatViewProps> = ({ pdfFile, pdfText, fileName, onStart
                 {/* Mobile Toggle Switches */}
                 <div className="md:hidden flex border-b border-gray-200 bg-white">
                     <button 
-                        onClick={() => setMobileViewMode('chat')}
-                        className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-semibold transition-colors ${mobileViewMode === 'chat' ? 'bg-primary/5 text-primary border-b-2 border-primary' : 'text-gray-500'}`}
+                        onClick={() => setMobileViewMode('tools')}
+                        className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-semibold transition-colors ${mobileViewMode === 'tools' ? 'bg-primary/5 text-primary border-b-2 border-primary' : 'text-gray-500'}`}
                     >
-                        <MessageSquareIcon className="w-4 h-4"/> Chat & Ferramentas
+                        <LayoutGridIcon className="w-4 h-4"/> Painel de Criação
                     </button>
                     <button 
                         onClick={() => setMobileViewMode('pdf')}
@@ -178,90 +150,35 @@ const ChatView: React.FC<ChatViewProps> = ({ pdfFile, pdfText, fileName, onStart
                         <PdfViewer file={pdfFile} />
                     </div>
 
-                    {/* Interaction Panel - Visible on Desktop OR Mobile if mode is 'chat' */}
-                    <div className={`${mobileViewMode === 'chat' ? 'flex' : 'hidden'} md:flex w-full md:w-1/2 flex-col bg-white h-full border-l border-gray-200`}>
+                    {/* Interaction Panel - Visible on Desktop OR Mobile if mode is 'tools' */}
+                    <div className={`${mobileViewMode === 'tools' ? 'flex' : 'hidden'} md:flex w-full md:w-1/2 flex-col bg-white h-full border-l border-gray-200`}>
                         <div className="border-b border-gray-200 overflow-x-auto custom-scrollbar">
                             <nav className="flex -mb-px min-w-max px-2">
-                                <TabButton tabName="chat">Chat</TabButton>
-                                <TabButton tabName="questions">Questões</TabButton>
-                                <TabButton tabName="answers">Gabarito</TabButton>
-                                <TabButton tabName="summary">Resumo</TabButton>
-                                <TabButton tabName="flashcards">Flashcards</TabButton>
+                                <TabButton tabName="questions">Extrair Questões</TabButton>
+                                <TabButton tabName="answers">Processar Gabarito</TabButton>
+                                <TabButton tabName="summary">Gerar Resumo</TabButton>
+                                <TabButton tabName="flashcards">Criar Flashcards</TabButton>
                             </nav>
                         </div>
 
-                        {activeTab === 'chat' && (
-                            <>
-                                <div ref={chatContainerRef} className="flex-grow p-4 space-y-4 overflow-y-auto bg-gray-50">
-                                    {messages.map((msg, index) => (
-                                        <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                                            {msg.role !== 'user' && (
-                                                <div className="w-8 h-8 flex-shrink-0 bg-primary rounded-full flex items-center justify-center text-white shadow-sm">
-                                                    <BotIcon className="w-5 h-5"/>
-                                                </div>
-                                            )}
-                                            <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
-                                                msg.role === 'user' 
-                                                ? 'bg-primary text-white rounded-br-none' 
-                                                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
-                                            }`}>
-                                                <p className="whitespace-pre-wrap">{msg.content}</p>
-                                            </div>
-                                            {msg.role === 'user' && (
-                                                <div className="w-8 h-8 flex-shrink-0 bg-gray-200 rounded-full flex items-center justify-center text-gray-600">
-                                                    <UserIcon className="w-5 h-5"/>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {isLoading && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 flex-shrink-0 bg-primary rounded-full flex items-center justify-center text-white">
-                                                <BotIcon className="w-5 h-5"/>
-                                            </div>
-                                            <div className="p-3 bg-white border border-gray-100 rounded-2xl rounded-bl-none shadow-sm">
-                                                <LoadingIndicator />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="p-3 border-t border-gray-200 bg-white sticky bottom-0">
-                                    <div className="relative flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value={userInput}
-                                            onChange={(e) => setUserInput(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                            placeholder="Pergunte sobre o documento..."
-                                            className="flex-grow p-3 pr-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-primary focus:outline-none bg-gray-50 text-gray-800 placeholder:text-gray-400 text-sm"
-                                            disabled={isLoading}
-                                        />
-                                        <button
-                                            onClick={handleSendMessage}
-                                            disabled={isLoading || !userInput.trim()}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary rounded-full text-white hover:bg-primary-dark transition-colors disabled:bg-gray-300 shadow-md"
-                                        >
-                                            <SendIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                        {activeTab === 'questions' && (
-                            <QuestionBankView 
-                                questions={questionBank}
-                                isExtracting={isExtracting}
-                                onExtract={handleExtractQuestions}
-                                onStudy={() => setShowFlashcards(true)}
-                                onSave={() => setShowSaveModal(true)}
-                                selectedIndices={selectedQuestionIndices}
-                                onSelectionChange={handleSelectionChange}
-                                onSelectAll={handleSelectAll}
-                            />
-                        )}
-                        {activeTab === 'answers' && <AnswerKeyProcessorTab questions={questionBank} onQuestionsUpdate={setQuestionBank} />}
-                        {activeTab === 'summary' && <SummaryGeneratorTab pdfText={pdfText} />}
-                        {activeTab === 'flashcards' && <FlashcardGeneratorTab pdfText={pdfText} />}
+                        {/* Content Area - No Chat Logic Here */}
+                        <div className="flex-grow overflow-hidden flex flex-col bg-gray-50">
+                            {activeTab === 'questions' && (
+                                <QuestionBankView 
+                                    questions={questionBank}
+                                    isExtracting={isExtracting}
+                                    onExtract={handleExtractQuestions}
+                                    onStudy={() => setShowFlashcards(true)}
+                                    onSave={() => setShowSaveModal(true)}
+                                    selectedIndices={selectedQuestionIndices}
+                                    onSelectionChange={handleSelectionChange}
+                                    onSelectAll={handleSelectAll}
+                                />
+                            )}
+                            {activeTab === 'answers' && <AnswerKeyProcessorTab questions={questionBank} onQuestionsUpdate={setQuestionBank} />}
+                            {activeTab === 'summary' && <SummaryGeneratorTab pdfText={pdfText} />}
+                            {activeTab === 'flashcards' && <FlashcardGeneratorTab pdfText={pdfText} />}
+                        </div>
                     </div>
                 </main>
             </div>

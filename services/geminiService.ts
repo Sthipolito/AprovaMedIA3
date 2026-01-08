@@ -107,6 +107,70 @@ export const answerQuestion = async (pdfText: string, userQuestion: string): Pro
     }
 };
 
+// --- NOVO: Análise Inicial estilo ChatPDF ---
+export const getPDFAnalysis = async (pdfText: string): Promise<{ summary: string; questions: string[] }> => {
+    try {
+        const ai = getAI();
+        // Pega os primeiros 30k caracteres para ter contexto suficiente do início do documento
+        const context = pdfText.substring(0, 30000);
+        
+        const prompt = `
+        Você é um assistente de estudo inteligente (estilo ChatPDF).
+        Analise o texto do documento fornecido abaixo.
+        
+        SUA TAREFA:
+        1. Crie um resumo de boas-vindas curto, amigável e convidativo (máximo 2 parágrafos curtos) explicando sobre o que é o documento.
+        2. Gere 3 perguntas de exemplo muito interessantes e específicas que o usuário poderia fazer sobre este documento para aprender mais.
+        
+        Retorne APENAS um JSON válido no seguinte formato:
+        {
+            "summary": "Olá! Este documento trata de...",
+            "questions": ["Pergunta 1?", "Pergunta 2?", "Pergunta 3?"]
+        }
+
+        TEXTO DO DOCUMENTO:
+        """
+        ${context}
+        """
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        summary: { type: Type.STRING },
+                        questions: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['summary', 'questions']
+                }
+            }
+        });
+
+        const text = response.text || "{}";
+        const data = JSON.parse(cleanJson(text));
+        
+        return {
+            summary: data.summary || "Olá! Li seu documento. O que você gostaria de saber?",
+            questions: data.questions && data.questions.length > 0 ? data.questions : [
+                "Qual é o tema principal?",
+                "Quais são os pontos chave?",
+                "Crie um resumo para mim."
+            ]
+        };
+
+    } catch (error) {
+        console.error("Erro na análise inicial do PDF:", error);
+        return {
+            summary: "Olá! Processei seu arquivo. Estou pronto para responder suas perguntas.",
+            questions: ["Do que se trata este arquivo?", "Faça um resumo.", "Quais os tópicos principais?"]
+        };
+    }
+};
+
 // Helper function to process a single chunk
 const extractQuestionsFromChunk = async (chunkText: string): Promise<QuizQuestion[] | null> => {
     let jsonString = '';
@@ -351,29 +415,50 @@ export const transcribeImage = async (file: File): Promise<string> => {
     } catch { return "Erro ao processar imagem."; }
 };
 
-// Implementação de Batching para garantir que todas as questões sejam processadas
+// Implementação de Batching com Prompt de Alta Qualidade Médica
 export const generateExplanationsForQuestions = async (questions: QuizQuestion[]): Promise<QuizQuestion[]> => {
     const ai = getAI();
-    const BATCH_SIZE = 5; // Tamanho seguro para evitar timeout ou limites de token
-    const updatedQuestions = [...questions]; // Cópia para mutar com resultados
+    const BATCH_SIZE = 5; // Tamanho seguro
+    const updatedQuestions = [...questions]; 
 
     for (let i = 0; i < questions.length; i += BATCH_SIZE) {
         const chunk = questions.slice(i, i + BATCH_SIZE);
         
-        // Mapeia para um formato que a IA entenda a ordem relativa (0 a BATCH_SIZE-1)
+        // Formata as questões para o prompt
         const chunkForAI = chunk.map((q, idx) => ({
-            id: idx, // ID relativo ao lote
-            question: q.question,
-            options: q.options,
-            correctAnswerIndex: q.correctAnswerIndex
+            id: idx, // ID relativo ao lote (0-4)
+            enunciado: q.question,
+            alternativas: q.options,
+            gabarito_index: q.correctAnswerIndex !== null ? q.correctAnswerIndex : "Desconhecido"
         }));
 
         try {
-            console.log(`Processando lote ${i / BATCH_SIZE + 1} de ${Math.ceil(questions.length / BATCH_SIZE)}...`);
+            console.log(`Processando lote ${i / BATCH_SIZE + 1} de ${Math.ceil(questions.length / BATCH_SIZE)} (Alta Qualidade)...`);
             
+            // PROMPT ENGENHARIA AVANÇADA PARA MEDICINA
+            const prompt = `
+            Você é um Professor Sênior de Medicina preparando residentes para provas de alto nível (USP, Unifesp, ENARE).
+            
+            SUA TAREFA:
+            Para cada questão médica fornecida abaixo, escreva um COMENTÁRIO DIDÁTICO COMPLETO.
+            
+            ESTRUTURA OBRIGATÓRIA DO COMENTÁRIO:
+            1. Resumo do Raciocínio Clínico: Identifique os sintomas-chave e o diagnóstico provável.
+            2. Por que a resposta correta é a correta: Explique a fisiopatologia, diretriz ou critério clínico.
+            3. Análise dos Distratores: Explique resumidamente por que as outras alternativas estão incorretas (diagnóstico diferencial).
+            
+            IMPORTANTE:
+            - NÃO apenas repita a resposta. Explique o "PORQUÊ".
+            - Use linguagem técnica médica adequada.
+            - Se o gabarito for "Desconhecido", deduza a resposta correta com base no conhecimento médico e explique.
+            
+            QUESTÕES PARA ANALISAR:
+            ${JSON.stringify(chunkForAI)}
+            `;
+
             const response = await ai.models.generateContent({
                 model: MODEL_NAME,
-                contents: `Explique estas questões médicas de forma didática e aprofundada para estudantes de medicina. Retorne um JSON com o ID e a explicação.\n${JSON.stringify(chunkForAI)}`,
+                contents: prompt,
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -385,7 +470,7 @@ export const generateExplanationsForQuestions = async (questions: QuizQuestion[]
                                     type: Type.OBJECT,
                                     properties: {
                                         id: { type: Type.INTEGER, description: "O ID relativo enviado no prompt (0, 1, 2...)" },
-                                        explanation: { type: Type.STRING }
+                                        explanation: { type: Type.STRING, description: "O comentário completo formatado em texto corrido ou markdown simples." }
                                     },
                                     required: ['id', 'explanation']
                                 }
@@ -399,17 +484,19 @@ export const generateExplanationsForQuestions = async (questions: QuizQuestion[]
             const parsedData = JSON.parse(cleanJson(response.text || "{}"));
             const explanations = parsedData.explanations || [];
 
-            // Atualiza o array principal com as explicações recebidas
+            // Merge das respostas
             explanations.forEach((item: any) => {
                 const globalIndex = i + item.id;
                 if (updatedQuestions[globalIndex]) {
-                    updatedQuestions[globalIndex].explanation = item.explanation;
+                    // Adiciona um prefixo para dar credibilidade visual
+                    const enrichedExplanation = item.explanation;
+                    updatedQuestions[globalIndex].explanation = enrichedExplanation;
                 }
             });
 
         } catch (e) {
             console.error(`Erro ao processar lote começando em índice ${i}:`, e);
-            // Continua para o próximo lote mesmo se este falhar, para não perder tudo
+            // Fallback silencioso para não quebrar a UI, mas loga o erro
         }
     }
 
